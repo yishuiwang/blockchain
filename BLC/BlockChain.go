@@ -11,37 +11,40 @@ type BlockChain struct {
 	DB  *bolt.DB
 }
 
-type BlockchainIterator struct {
-	currentHash []byte
-	db          *bolt.DB
-}
-
 const dbFile = "blockchain.db"
 const blocksBucket = "blocks"
 
-func NewBlockChain() *BlockChain {
-	var tip []byte
+// OpenOrCreateBlockChain 打开或创建区块链
+func OpenOrCreateBlockChain() *BlockChain {
 	db, err := bolt.Open(dbFile, 0600, nil)
 	if err != nil {
 		log.Panic(err)
 	}
 
+	// 从数据库中获取最新区块的 Hash
+	var tip []byte
 	err = db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
 		if b == nil {
-			// 将创世区块存入数据库
+			// 如果数据库中不存在区块链数据，则创建创世区块
 			genesis := CreateGenesisBlock("Genesis Block")
-			bucket, _ := tx.CreateBucket([]byte(blocksBucket))
-			key := genesis.Hash
-			value := genesis.Serialize()
-			_ = bucket.Put(key, value)
-			_ = bucket.Put([]byte("l"), key)
-			tip = key
+			bucket, err := tx.CreateBucket([]byte(blocksBucket))
+			if err != nil {
+				return err
+			}
+			_ = bucket.Put(genesis.Hash, genesis.Serialize())
+			_ = bucket.Put([]byte("l"), genesis.Hash)
+			tip = genesis.Hash
 		} else {
+			// 数据库中存在区块链数据，获取最新区块的 Hash
 			tip = b.Get([]byte("l"))
 		}
 		return nil
 	})
+	if err != nil {
+		log.Panic(err)
+	}
+
 	return &BlockChain{tip, db}
 }
 
@@ -84,24 +87,4 @@ func (bc *BlockChain) PrintChain() {
 			break
 		}
 	}
-}
-
-func (i *BlockchainIterator) Next() *Block {
-	var block *Block
-
-	err := i.db.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(blocksBucket))
-		encodedBlock := b.Get(i.currentHash)
-		block = DeserializeBlock(encodedBlock)
-
-		return nil
-	})
-
-	if err != nil {
-		log.Panic(err)
-	}
-
-	i.currentHash = block.PreHash
-
-	return block
 }

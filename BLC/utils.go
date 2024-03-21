@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"log"
+	"os"
 )
 
 // IntToHex converts an int64 to a byte array
@@ -14,4 +15,11 @@ func IntToHex(num int64) []byte {
 		log.Println(err)
 	}
 	return buff.Bytes()
+}
+
+func DBExists() bool {
+	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
+		return false
+	}
+	return true
 }
