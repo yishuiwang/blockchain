@@ -24,6 +24,12 @@ func NewProofOfWork(block *Block) *ProofOfWork {
 	return pow
 }
 
+func (pow *ProofOfWork) IsValid() bool {
+	var hashInt big.Int
+	hashInt.SetBytes(pow.Block.Hash)
+	return pow.Target.Cmp(&hashInt) == 1
+}
+
 func (pow *ProofOfWork) Run() ([]byte, int64) {
 	nonce := 0
 	var hashInt big.Int

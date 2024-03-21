@@ -1,2 +1,6 @@
 
 .idea/
+
+blockchain.db
+
+blockchain.db.lock
